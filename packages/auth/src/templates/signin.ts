@@ -13,12 +13,12 @@ export const signinTemplate = ({
   return `import { getSigninPage } from '@keystone-6/auth/pages/SigninPage'
 
 export default getSigninPage(${JSON.stringify({
-    identityField: identityField,
-    secretField: secretField,
-    mutationName: gqlNames.authenticateItemWithPassword,
-    successTypename: gqlNames.ItemAuthenticationWithPasswordSuccess,
-    failureTypename: gqlNames.ItemAuthenticationWithPasswordFailure,
-  })});
+  identityField: identityField,
+  secretField: secretField,
+  mutationName: gqlNames.authenticateItemWithPassword,
+  successTypename: gqlNames.ItemAuthenticationWithPasswordSuccess,
+  failureTypename: gqlNames.ItemAuthenticationWithPasswordFailure,
+})});
 `;
   // -- TEMPLATE END
 };

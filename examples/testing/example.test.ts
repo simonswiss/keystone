@@ -30,10 +30,10 @@ test('Check that trying to create user with no name (required field) fails', asy
   // error from an operation.
   const { data, errors } = (await context.graphql.raw({
     query: `mutation {
-          createUser(data: { password: "dont-use-me" }) {
-            id name password { isSet }
-          }
-        }`,
+      createUser(data: { password: "dont-use-me" }) {
+        id name password { isSet }
+      }
+    }`,
   })) as any;
   expect(data!.createUser).toBe(null);
   expect(errors).toHaveLength(1);
@@ -78,10 +78,10 @@ test('Check access control by running updateTask as a specific user via context.
   {
     const { data, errors } = (await context.graphql.raw({
       query: `mutation update($id: ID!) {
-            updateTask(where: { id: $id }, data: { isComplete: true }) {
-              id
-            }
-          }`,
+        updateTask(where: { id: $id }, data: { isComplete: true }) {
+          id
+        }
+      }`,
       variables: { id: task.id },
     })) as any;
     expect(data!.updateTask).toBe(null);
@@ -98,10 +98,10 @@ test('Check access control by running updateTask as a specific user via context.
       .withSession({ listKey: 'User', itemId: alice.id, data: {} })
       .graphql.raw({
         query: `mutation update($id: ID!) {
-              updateTask(where: { id: $id }, data: { isComplete: true }) {
-                id
-              }
-            }`,
+            updateTask(where: { id: $id }, data: { isComplete: true }) {
+              id
+            }
+          }`,
         variables: { id: task.id },
       })) as any;
     expect(data!.updateTask.id).toEqual(task.id);
@@ -114,10 +114,10 @@ test('Check access control by running updateTask as a specific user via context.
       .withSession({ listKey: 'User', itemId: bob.id, data: {} })
       .graphql.raw({
         query: `mutation update($id: ID!) {
-              updateTask(where: { id: $id }, data: { isComplete: true }) {
-                id
-              }
-            }`,
+          updateTask(where: { id: $id }, data: { isComplete: true }) {
+            id
+          }
+        }`,
         variables: { id: task.id },
       })) as any;
     expect(data!.updateTask).toBe(null);

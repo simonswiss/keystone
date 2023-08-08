@@ -20,16 +20,7 @@ const { withAuth } = createAuth({
   // a secret field must be a password field type
   secretField: 'password',
 
-  // initFirstItem enables the "First User" experience, this will add an interface form
-  //   adding a new User item if the database is empty
-  //
-  // WARNING: do not use initFirstItem in production
-  //   see https://keystonejs.com/docs/config/auth#init-first-item for more
-  initFirstItem: {
-    // the following fields are used by the "Create First User" form
-    fields: ['name', 'password'],
-  },
-
+  // used to determine if sessions should be expired
   sessionData: 'passwordChangedAt',
 });
 

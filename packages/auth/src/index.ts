@@ -1,17 +1,14 @@
 import type {
-  AdminFileToWrite,
   BaseListTypeInfo,
   KeystoneConfig,
   KeystoneContext,
   SessionStrategy,
   BaseKeystoneTypeInfo,
 } from '@keystone-6/core/types';
-import { password, timestamp } from '@keystone-6/core/fields';
 
 import type { AuthConfig, AuthGqlNames } from './types';
 import { getSchemaExtension } from './schema';
 import { signinTemplate } from './templates/signin';
-import { initTemplate } from './templates/init';
 
 export type AuthSession = {
   listKey: string; // TODO: use ListTypeInfo
@@ -28,67 +25,14 @@ export type AuthSession = {
 export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
   listKey,
   secretField,
-  initFirstItem,
   identityField,
-  magicAuthLink,
-  passwordResetLink,
   sessionData = 'id',
 }: AuthConfig<ListTypeInfo>) {
   const gqlNames: AuthGqlNames = {
-    // Core
     authenticateItemWithPassword: `authenticate${listKey}WithPassword`,
     ItemAuthenticationWithPasswordResult: `${listKey}AuthenticationWithPasswordResult`,
     ItemAuthenticationWithPasswordSuccess: `${listKey}AuthenticationWithPasswordSuccess`,
     ItemAuthenticationWithPasswordFailure: `${listKey}AuthenticationWithPasswordFailure`,
-    // Initial data
-    CreateInitialInput: `CreateInitial${listKey}Input`,
-    createInitialItem: `createInitial${listKey}`,
-    // Password reset
-    sendItemPasswordResetLink: `send${listKey}PasswordResetLink`,
-    SendItemPasswordResetLinkResult: `Send${listKey}PasswordResetLinkResult`,
-    validateItemPasswordResetToken: `validate${listKey}PasswordResetToken`,
-    ValidateItemPasswordResetTokenResult: `Validate${listKey}PasswordResetTokenResult`,
-    redeemItemPasswordResetToken: `redeem${listKey}PasswordResetToken`,
-    RedeemItemPasswordResetTokenResult: `Redeem${listKey}PasswordResetTokenResult`,
-    // Magic auth
-    sendItemMagicAuthLink: `send${listKey}MagicAuthLink`,
-    SendItemMagicAuthLinkResult: `Send${listKey}MagicAuthLinkResult`,
-    redeemItemMagicAuthToken: `redeem${listKey}MagicAuthToken`,
-    RedeemItemMagicAuthTokenResult: `Redeem${listKey}MagicAuthTokenResult`,
-    RedeemItemMagicAuthTokenSuccess: `Redeem${listKey}MagicAuthTokenSuccess`,
-    RedeemItemMagicAuthTokenFailure: `Redeem${listKey}MagicAuthTokenFailure`,
-  };
-
-  /**
-   * fields
-   *
-   * Fields added to the auth list.
-   */
-  const fieldConfig = {
-    access: () => false,
-    ui: {
-      createView: { fieldMode: 'hidden' },
-      itemView: { fieldMode: 'hidden' },
-      listView: { fieldMode: 'hidden' },
-    },
-  } as const;
-
-  const authFields = {
-    ...(passwordResetLink
-      ? {
-          passwordResetToken: password({ ...fieldConfig }),
-          passwordResetIssuedAt: timestamp({ ...fieldConfig }),
-          passwordResetRedeemedAt: timestamp({ ...fieldConfig }),
-        }
-      : null),
-
-    ...(magicAuthLink
-      ? {
-          magicAuthToken: password({ ...fieldConfig }),
-          magicAuthIssuedAt: timestamp({ ...fieldConfig }),
-          magicAuthRedeemedAt: timestamp({ ...fieldConfig }),
-        }
-      : null),
   };
 
   /**
@@ -99,23 +43,15 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
    *
    * The signin page is always included, and the init page is included when initFirstItem is set
    */
-  const authGetAdditionalFiles = () => {
-    const filesToWrite: AdminFileToWrite[] = [
+  function authGetAdditionalFiles () {
+    return  [
       {
         mode: 'write',
         src: signinTemplate({ gqlNames, identityField, secretField }),
         outputPath: 'pages/signin.js',
-      },
+      } as const,
     ];
-    if (initFirstItem) {
-      filesToWrite.push({
-        mode: 'write',
-        src: initTemplate({ listKey, initFirstItem }),
-        outputPath: 'pages/init.js',
-      });
-    }
-    return filesToWrite;
-  };
+  }
 
   /**
    * extendGraphqlSchema
@@ -127,9 +63,6 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
     listKey,
     secretField,
     gqlNames,
-    initFirstItem,
-    passwordResetLink,
-    magicAuthLink,
     sessionData,
   });
 
@@ -149,12 +82,6 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
 
     if (!(secretField in list.fields)) {
       throw new Error(`withAuth cannot find the secret field "${listKey}.${secretField}"`);
-    }
-
-    for (const fieldKey of initFirstItem?.fields || []) {
-      if (fieldKey in list.fields) continue;
-
-      throw new Error(`initFirstItem.fields has unknown field "${listKey}.${fieldKey}"`);
     }
   }
 
@@ -191,19 +118,6 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
     };
   }
 
-  async function hasInitFirstItemConditions<TypeInfo extends BaseKeystoneTypeInfo>(
-    context: KeystoneContext<TypeInfo>
-  ) {
-    // do nothing if they aren't using this feature
-    if (!initFirstItem) return false;
-
-    // if they have a session, there is no initialisation necessary
-    if (context.session) return false;
-
-    const count = await context.sudo().db[listKey].count({});
-    return count === 0;
-  }
-
   async function authMiddleware<TypeInfo extends BaseKeystoneTypeInfo>({
     context,
     wasAccessAllowed,
@@ -213,19 +127,6 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
     wasAccessAllowed: boolean;
     basePath: string;
   }): Promise<{ kind: 'redirect'; to: string } | void> {
-    const { req } = context;
-    const { pathname } = new URL(req!.url!, 'http://_');
-
-    // redirect to init if initFirstItem conditions are met
-    if (pathname !== `${basePath}/init` && (await hasInitFirstItemConditions(context))) {
-      return { kind: 'redirect', to: `${basePath}/init` };
-    }
-
-    // redirect to / if attempting to /init and initFirstItem conditions are not met
-    if (pathname === `${basePath}/init` && !(await hasInitFirstItemConditions(context))) {
-      return { kind: 'redirect', to: basePath };
-    }
-
     // don't redirect if we have access
     if (wasAccessAllowed) return;
 
@@ -263,12 +164,7 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
         ...ui,
         publicPages: [...publicPages, ...authPublicPages],
         getAdditionalFiles: [...getAdditionalFiles, authGetAdditionalFiles],
-
-        isAccessAllowed: async (context: KeystoneContext) => {
-          if (await hasInitFirstItemConditions(context)) return true;
-          return isAccessAllowed(context);
-        },
-
+        isAccessAllowed,
         pageMiddleware: async args => {
           const shouldRedirect = await authMiddleware(args);
           if (shouldRedirect) return shouldRedirect;
@@ -280,22 +176,11 @@ export function createAuth<ListTypeInfo extends BaseListTypeInfo>({
     if (!config.session) throw new TypeError('Missing .session configuration');
 
     const { extendGraphqlSchema = defaultExtendGraphqlSchema } = config;
-    const authListConfig = config.lists[listKey];
 
     return {
       ...config,
       ui,
       session: authSessionStrategy(config.session),
-      lists: {
-        ...config.lists,
-        [listKey]: {
-          ...authListConfig,
-          fields: {
-            ...authListConfig.fields,
-            ...authFields,
-          },
-        },
-      },
       extendGraphqlSchema: schema => {
         return extendGraphqlSchema(authExtendGraphqlSchema(schema));
       },

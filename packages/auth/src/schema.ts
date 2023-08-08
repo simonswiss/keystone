@@ -9,17 +9,11 @@ import {
   parse,
   validate,
 } from 'graphql';
+import type { BaseItem } from '@keystone-6/core/types';
 import { graphql } from '@keystone-6/core';
-import type {
-  AuthGqlNames,
-  AuthTokenTypeConfig,
-  InitFirstItemConfig,
-  SecretFieldImpl,
-} from './types';
-import { getBaseAuthSchema } from './gql/getBaseAuthSchema';
-import { getInitFirstItemSchema } from './gql/getInitFirstItemSchema';
-import { getPasswordResetSchema } from './gql/getPasswordResetSchema';
-import { getMagicAuthLinkSchema } from './gql/getMagicAuthLinkSchema';
+
+import type { AuthGqlNames, SecretFieldImpl } from './types';
+import { validateSecret } from './lib/validateSecret';
 
 function assertSecretFieldImpl(
   impl: any,
@@ -45,23 +39,135 @@ export function getSecretFieldImpl(schema: GraphQLSchema, listKey: string, field
   return secretFieldImpl;
 }
 
+export function getBaseAuthSchema<I extends string, S extends string>({
+  listKey,
+  identityField,
+  secretField,
+  gqlNames,
+  secretFieldImpl,
+  base,
+}: {
+  listKey: string;
+  identityField: I;
+  secretField: S;
+  gqlNames: AuthGqlNames;
+  secretFieldImpl: SecretFieldImpl;
+  base: graphql.BaseSchemaMeta;
+
+  // TODO: return type required by pnpm :(
+}): {
+  extension: graphql.Extension;
+  ItemAuthenticationWithPasswordSuccess: graphql.ObjectType<{
+    sessionToken: string;
+    item: BaseItem;
+  }>;
+} {
+  const ItemAuthenticationWithPasswordSuccess = graphql.object<{
+    sessionToken: string;
+    item: BaseItem;
+  }>()({
+    name: gqlNames.ItemAuthenticationWithPasswordSuccess,
+    fields: {
+      sessionToken: graphql.field({ type: graphql.nonNull(graphql.String) }),
+      item: graphql.field({ type: graphql.nonNull(base.object(listKey)) }),
+    },
+  });
+  const ItemAuthenticationWithPasswordFailure = graphql.object<{ message: string }>()({
+    name: gqlNames.ItemAuthenticationWithPasswordFailure,
+    fields: {
+      message: graphql.field({ type: graphql.nonNull(graphql.String) }),
+    },
+  });
+  const AuthenticationResult = graphql.union({
+    name: gqlNames.ItemAuthenticationWithPasswordResult,
+    types: [ItemAuthenticationWithPasswordSuccess, ItemAuthenticationWithPasswordFailure],
+    resolveType(val) {
+      if ('sessionToken' in val) {
+        return gqlNames.ItemAuthenticationWithPasswordSuccess;
+      }
+      return gqlNames.ItemAuthenticationWithPasswordFailure;
+    },
+  });
+
+  const extension = {
+    query: {
+      authenticatedItem: graphql.field({
+        type: graphql.union({
+          name: 'AuthenticatedItem',
+          types: [base.object(listKey) as graphql.ObjectType<BaseItem>],
+          resolveType: (root, context) => context.session?.listKey,
+        }),
+        resolve(root, args, context) {
+          const { session } = context;
+          if (!session) return null;
+          if (!session.itemId) return null;
+          if (session.listKey !== listKey) return null;
+
+          return context.db[listKey].findOne({
+            where: {
+              id: session.itemId,
+            },
+          });
+        },
+      }),
+    },
+    mutation: {
+      [gqlNames.authenticateItemWithPassword]: graphql.field({
+        type: AuthenticationResult,
+        args: {
+          [identityField]: graphql.arg({ type: graphql.nonNull(graphql.String) }),
+          [secretField]: graphql.arg({ type: graphql.nonNull(graphql.String) }),
+        },
+        async resolve(root, { [identityField]: identity, [secretField]: secret }, context) {
+          if (!context.sessionStrategy) {
+            throw new Error('No session implementation available on context');
+          }
+
+          const dbItemAPI = context.sudo().db[listKey];
+          const item = await validateSecret(
+            secretFieldImpl,
+            identityField,
+            identity,
+            secretField,
+            secret,
+            dbItemAPI
+          );
+
+          if (item === null) return { code: 'FAILURE', message: 'Authentication failed.' };
+
+          // update system state
+          const sessionToken = await context.sessionStrategy.start({
+            data: {
+              listKey,
+              itemId: item.id,
+            },
+            context,
+          });
+
+          // return Failure if sessionStrategy.start() returns null
+          if (typeof sessionToken !== 'string' || sessionToken.length === 0) {
+            return { code: 'FAILURE', message: 'Failed to start session.' };
+          }
+
+          return { sessionToken, item };
+        },
+      }),
+    },
+  };
+  return { extension, ItemAuthenticationWithPasswordSuccess };
+}
+
 export const getSchemaExtension = ({
   identityField,
   listKey,
   secretField,
   gqlNames,
-  initFirstItem,
-  passwordResetLink,
-  magicAuthLink,
   sessionData,
 }: {
   identityField: string;
   listKey: string;
   secretField: string;
   gqlNames: AuthGqlNames;
-  initFirstItem?: InitFirstItemConfig<any>;
-  passwordResetLink?: AuthTokenTypeConfig;
-  magicAuthLink?: AuthTokenTypeConfig;
   sessionData: string;
 }) =>
   graphql.extend(base => {
@@ -116,38 +222,5 @@ export const getSchemaExtension = ({
       );
     }
 
-    return [
-      baseSchema.extension,
-      initFirstItem &&
-        getInitFirstItemSchema({
-          listKey,
-          fields: initFirstItem.fields,
-          itemData: initFirstItem.itemData,
-          gqlNames,
-          graphQLSchema: base.schema,
-          ItemAuthenticationWithPasswordSuccess: baseSchema.ItemAuthenticationWithPasswordSuccess,
-        }),
-      passwordResetLink &&
-        getPasswordResetSchema({
-          identityField,
-          listKey,
-          secretField,
-          passwordResetLink,
-          gqlNames,
-          passwordResetTokenSecretFieldImpl: getSecretFieldImpl(
-            base.schema,
-            listKey,
-            'passwordResetToken'
-          ),
-        }),
-      magicAuthLink &&
-        getMagicAuthLinkSchema({
-          identityField,
-          listKey,
-          magicAuthLink,
-          gqlNames,
-          magicAuthTokenSecretFieldImpl: getSecretFieldImpl(base.schema, listKey, 'magicAuthToken'),
-          base,
-        }),
-    ].filter((x): x is Exclude<typeof x, undefined> => x !== undefined);
+    return [baseSchema.extension];
   });

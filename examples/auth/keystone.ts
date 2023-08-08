@@ -4,47 +4,85 @@ import { createAuth } from '@keystone-6/auth';
 import { fixPrismaPath } from '../example-utils';
 import { lists } from './schema';
 
+///////// EXPERIMENT: Versatile Auth
+//
+//  hypothesis:
+//     trying to decrease the responsibility of the auth package
+//     not hinder new users
+//
+//     increase progressive enhancement
+//     decrease the mystery of the auth package
+//     remove the confusing string sessionData , but allow users to actually customise their session
+//
+//     ability to customize atleast the start,  and maybe the end of a session
+//       its a huge jump currently
+//
+//  problem:
+//    these apis are all super inter-linked
+//    getSession has been proposed, but it has issues with dependency injection when it comes to managing the session on the client side, aka, cookies et al
+//      its only good for the keystone side
+//
+//    we need to bridge that gap
+//
+//    how do we do custom logins like CAPTCHAs and or organisations, or 2FA, et cetera
+
 // WARNING: this example is for demonstration purposes only
 //   as with each of our examples, it has not been vetted
 //   or tested for any particular usage
-
-// WARNING: you need to change this
-const sessionSecret = '-- DEV COOKIE SECRET; CHANGE ME --';
-
-// statelessSessions uses cookies for session tracking
-//   these cookies have an expiry, in seconds
-//   we use an expiry of 30 days for this example
-const sessionMaxAge = 60 * 60 * 24 * 30;
-
 // withAuth is a function we can use to wrap our base configuration
-const { withAuth } = createAuth({
-  // this is the list that contains our users
+
+const authSessionStrategy = statelessSession({
+  // the maxAge option controls how long session cookies are valid for before they expire
+  maxAge: 60 * 60 * 24 * 30,
+  // the session secret is used to encrypt cookie data
+  // WARNING: you need to change this
+  secret: '-- DEV COOKIE SECRET; CHANGE ME --',
+});
+
+//    start: ({ context, inputData }) => {
+//      const user = await context.extensions.User.password.findAndValidate({
+//        where: { name: inputData.identifier, },
+//        password: inputData.password,
+//      })
+//      if (!user) return
+//      return sessionStrategy.start({ context, data: { id: user.id } })
+//    },
+//    get: ({ context } => {
+//      const session = sessionStrategy.get({ context });
+//      const user = await context.db.User.findOne({
+//        where: { id: session.itemId }
+//      });
+//      if (!user) return;
+//      return { id: user.id, isAdmin: user.isAdmin };
+//    }
+const withAuth = createAuth({
   listKey: 'User',
+  identifyBy: 'name',
+  compareBy: 'password'
+  strategy: authSessionStrategy
+});
 
-  // an identity field, typically a username or an email address
-  identityField: 'name',
+const withAuth = createAuth({
+  validateBy: {
+    listKey: 'User',
+    identifier: 'name',
+    password: 'password',
+  }
+  strategy: authSessionStrategy
+});
 
-  // a secret field must be a password field type
-  secretField: 'password',
-
-  // initFirstItem enables the "First User" experience, this will add an interface form
-  //   adding a new User item if the database is empty
-  //
-  // WARNING: do not use initFirstItem in production
-  //   see https://keystonejs.com/docs/config/auth#init-first-item for more
-  initFirstItem: {
-    // the following fields are used by the "Create First User" form
-    fields: ['name', 'password'],
-
-    // the following fields are configured by default for this item
-    itemData: {
-      // isAdmin is true, so the admin can pass isAccessAllowed (see below)
-      isAdmin: true,
-    },
+const withAuth = createAuth({
+  fields: {
+    organisation: text(),
+    name: text(),
+    password: password(),
+    mfa: text()
   },
-
-  // add isAdmin to the session data
-  sessionData: 'isAdmin',
+  validate: ({ context, inputData }) => {
+    const user = context.db.User.findOne({ name: inputData.name, active: true })
+    /// ....
+  }),
+  strategy: authSessionStrategy
 });
 
 export default withAuth(
@@ -63,12 +101,16 @@ export default withAuth(
         return session?.data?.isAdmin ?? false;
       },
     },
-    // you can find out more at https://keystonejs.com/docs/apis/session#session-api
-    session: statelessSessions({
-      // the maxAge option controls how long session cookies are valid for before they expire
-      maxAge: sessionMaxAge,
-      // the session secret is used to encrypt cookie data
-      secret: sessionSecret,
-    }),
+
+    // WARNING: this would come with withAuth by default
+    getSession: ({ context }) => {
+      const session = authSessionStrategy.get({ context });
+      const user = await context.db.User.findOne({
+        where: { id: session.id }
+      });
+      if (!user) return;
+
+      return { id: user.id, isAdmin: user.isAdmin };
+    }
   })
 );

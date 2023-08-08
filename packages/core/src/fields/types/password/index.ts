@@ -61,7 +61,6 @@ export const password =
     }
 
     const fieldLabel = config.label ?? humanize(meta.fieldKey);
-
     const validation = {
       isRequired: _validation?.isRequired ?? false,
       rejectCommon: _validation?.rejectCommon ?? false,
