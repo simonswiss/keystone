@@ -4,28 +4,6 @@ import { createAuth } from '@keystone-6/auth';
 import { fixPrismaPath } from '../example-utils';
 import { lists } from './schema';
 
-///////// EXPERIMENT: Versatile Auth
-//
-//  hypothesis:
-//     trying to decrease the responsibility of the auth package
-//     not hinder new users
-//
-//     increase progressive enhancement
-//     decrease the mystery of the auth package
-//     remove the confusing string sessionData , but allow users to actually customise their session
-//
-//     ability to customize atleast the start,  and maybe the end of a session
-//       its a huge jump currently
-//
-//  problem:
-//    these apis are all super inter-linked
-//    getSession has been proposed, but it has issues with dependency injection when it comes to managing the session on the client side, aka, cookies et al
-//      its only good for the keystone side
-//
-//    we need to bridge that gap
-//
-//    how do we do custom logins like CAPTCHAs and or organisations, or 2FA, et cetera
-
 // WARNING: this example is for demonstration purposes only
 //   as with each of our examples, it has not been vetted
 //   or tested for any particular usage
@@ -63,7 +41,7 @@ const withAuth = createAuth({
 });
 
 const withAuth = createAuth({
-  validateBy: {
+  validate: {
     listKey: 'User',
     identifier: 'name',
     password: 'password',
