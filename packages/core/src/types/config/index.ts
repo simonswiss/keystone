@@ -10,12 +10,7 @@ import type { AssetMode, BaseKeystoneTypeInfo, KeystoneContext, DatabaseProvider
 
 import type { SessionStrategy } from '../session';
 import type { MaybePromise } from '../utils';
-import type {
-  ListConfig,
-  MaybeSessionFunction,
-  MaybeItemFunction,
-  IdFieldConfig,
-} from './lists';
+import type { ListConfig, MaybeSessionFunction, MaybeItemFunction, IdFieldConfig } from './lists';
 import type { BaseFields } from './fields';
 import type { ListAccessControl, FieldAccessControl } from './access-control';
 import type { ListHooks } from './hooks';
@@ -97,6 +92,7 @@ export type KeystoneConfig<TypeInfo extends BaseKeystoneTypeInfo = BaseKeystoneT
   graphql?: GraphQLConfig<TypeInfo>;
   lists: Record<string, ListConfig<TypeInfo['lists'][string]>>;
   ui?: AdminUIConfig<TypeInfo>;
+
   server?: ServerConfig<TypeInfo>;
   session?: SessionStrategy<TypeInfo['session'], TypeInfo>;
   types?: {

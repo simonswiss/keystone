@@ -3,6 +3,8 @@ import type { BaseItem } from './next-fields';
 type GraphQLInput = Record<string, any>;
 
 export type BaseListTypeInfo<Session = any> = {
+  SchemaTypeInfo: BaseKeystoneTypeInfo<Session>;
+
   /**
    * the key of the list in TypeInfo['lists']
    */
@@ -24,7 +26,6 @@ export type BaseListTypeInfo<Session = any> = {
     create: Record<string, any>;
     update: Record<string, any>;
   };
-  all: BaseKeystoneTypeInfo<Session>;
 };
 
 export type BaseKeystoneTypeInfo<Session = any> = {

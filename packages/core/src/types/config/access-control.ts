@@ -3,8 +3,8 @@ import type { KeystoneContext } from '../context';
 import type { BaseListTypeInfo } from '../type-info';
 
 export type BaseAccessArgs<ListTypeInfo extends BaseListTypeInfo> = {
-  context: KeystoneContext<ListTypeInfo['all']>;
-  session?: ListTypeInfo['all']['session'];
+  context: KeystoneContext<ListTypeInfo['SchemaTypeInfo']>;
+  session?: ListTypeInfo['SchemaTypeInfo']['session'];
   listKey: string;
 };
 

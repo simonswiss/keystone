@@ -2,7 +2,7 @@ import type { KeystoneContext, MaybePromise } from '..';
 import type { BaseListTypeInfo } from '../type-info';
 
 type CommonArgs<ListTypeInfo extends BaseListTypeInfo> = {
-  context: KeystoneContext<ListTypeInfo['all']>;
+  context: KeystoneContext<ListTypeInfo['SchemaTypeInfo']>;
   listKey: ListTypeInfo['key'];
 };
 
