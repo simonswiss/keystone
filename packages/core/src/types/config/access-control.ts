@@ -5,7 +5,7 @@ import type { BaseListTypeInfo } from '../type-info';
 export type BaseAccessArgs<ListTypeInfo extends BaseListTypeInfo> = {
   context: KeystoneContext<ListTypeInfo['SchemaTypeInfo']>;
   session?: ListTypeInfo['SchemaTypeInfo']['session'];
-  listKey: string;
+  listKey: ListTypeInfo['key'];
 };
 
 export type AccessOperation = 'create' | 'query' | 'update' | 'delete';
