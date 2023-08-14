@@ -16,8 +16,9 @@ export type ListConfig<ListTypeInfo extends BaseListTypeInfo> = {
    */
   access: ListAccessControl<ListTypeInfo>;
 
-  /** Config for how this list should act in the Admin UI */
-  ui?: ListAdminUIConfig<ListTypeInfo>;
+  db?: ListDBConfig;
+
+  graphql?: ListGraphQLConfig;
 
   /**
    * Hooks to modify the behaviour of GraphQL operations at certain points
@@ -25,9 +26,8 @@ export type ListConfig<ListTypeInfo extends BaseListTypeInfo> = {
    */
   hooks?: ListHooks<ListTypeInfo>;
 
-  graphql?: ListGraphQLConfig;
-
-  db?: ListDBConfig;
+  /** Config for how this list should act in the Admin UI */
+  ui?: ListAdminUIConfig<ListTypeInfo>;
 
   /**
    * Defaults the Admin UI and GraphQL descriptions

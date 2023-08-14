@@ -1,9 +1,11 @@
-import type { KeystoneContext } from './context';
 import type { BaseItem } from './next-fields';
 
 type GraphQLInput = Record<string, any>;
 
 export type BaseListTypeInfo<Session = any> = {
+  /**
+   * the key of the list in TypeInfo['lists']
+   */
   key: string;
   isSingleton: boolean;
   fields: string;
@@ -24,9 +26,6 @@ export type BaseListTypeInfo<Session = any> = {
   };
   all: BaseKeystoneTypeInfo<Session>;
 };
-
-export type KeystoneContextFromListTypeInfo<ListTypeInfo extends BaseListTypeInfo> =
-  KeystoneContext<ListTypeInfo['all']>;
 
 export type BaseKeystoneTypeInfo<Session = any> = {
   lists: Record<string, BaseListTypeInfo<Session>>;
