@@ -122,43 +122,49 @@ export const lists: Lists<Session> = {
       content: text(),
       hidden: checkbox({
         access: moderatorsOrAbove,
-        ui: {
-          ...editOnlyViewBy(moderatorsOrAbove),
-        },
+        ui: editOnlyViewBy(moderatorsOrAbove),
       }),
 
       // read only fields
-      createdBy: relationship({
+      createdBy: relationship({ // *By example, as a list hook
         ref: 'Contributor.posts',
         access: readOnlyBy(allowAll),
-        ui: {
-          ...readOnlyViewBy(allowAll),
-        },
+        ui: readOnlyViewBy(allowAll),
       }),
       createdAt: timestamp({
         access: readOnlyBy(allowAll),
-        ui: {
-          ...readOnlyViewBy(allowAll),
-        },
+        ui: readOnlyViewBy(allowAll),
       }),
       updatedAt: timestamp({
         access: readOnlyBy(allowAll),
-        ui: {
-          ...readOnlyViewBy(allowAll),
-        },
+        ui: readOnlyViewBy(allowAll),
       }),
-      hiddenBy: relationship({
+      updatedBy: relationship({ // *By example, as a field hook
+        ref: 'Contributor',
+        access: readOnlyBy(allowAll),
+        ui: readOnlyViewBy(allowAll),
+        hooks: {
+          resolveInput: ({ context, operation, resolvedData }) => {
+            if (operation === 'update' && context.session?.contributor) {
+              return {
+                connect: {
+                  id: context.session?.contributor?.id,
+                },
+              };
+            }
+
+            return resolvedData.updatedBy
+          }
+        }
+      }),
+      hiddenBy: relationship({ // *By example, as a list hook
         ref: 'Moderator.hidden',
         access: readOnlyBy(moderatorsOrAbove),
-        ui: {
-          ...readOnlyViewBy(moderatorsOrAbove),
-        },
+        ui: readOnlyViewBy(moderatorsOrAbove),
       }),
       hiddenAt: timestamp({
         access: readOnlyBy(moderatorsOrAbove),
-        ui: {
-          ...readOnlyViewBy(moderatorsOrAbove),
-        },
+        ui: readOnlyViewBy(moderatorsOrAbove),
       }),
     },
     hooks: {
@@ -185,7 +191,7 @@ export const lists: Lists<Session> = {
                   connect: {
                     id: context.session?.moderator?.id,
                   },
-                  // TODO: should support : null
+                  // TODO: should support `null` as an alias for `{ disconnect: true }`
                 }
               : {
                   disconnect: true,
