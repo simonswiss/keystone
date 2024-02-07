@@ -64,11 +64,14 @@ export type ListMetaRootVal = {
   pageSize: number
   initialColumns: string[]
   initialSort: { field: string, direction: 'ASC' | 'DESC' } | null
+  isAuthenticated: boolean
   isSingleton: boolean
 
-  // TODO: probably remove this
-  itemQueryName: string
-  listQueryName: string
+  // TODO: remove in breaking change
+  itemQueryName: string /** @deprecated */
+  listQueryName: string /** @deprecated */
+  // TODO: remove in breaking change
+
   isHidden: ContextFunction<boolean>
   hideCreate: ContextFunction<boolean>
   hideDelete: ContextFunction<boolean>
@@ -147,6 +150,7 @@ export function createAdminMeta (
         (listConfig.ui?.listView?.initialSort as
           | { field: string, direction: 'ASC' | 'DESC' }
           | undefined) ?? null,
+      isAuthenticated: list.isAuthenticated,
       isSingleton: list.isSingleton,
 
       // TODO: probably remove this
