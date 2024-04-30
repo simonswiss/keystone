@@ -1,9 +1,8 @@
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 import fs from 'node:fs'
-import { promisify } from 'util'
 import fetch from 'node-fetch'
 import execa, { type ExecaChildProcess } from 'execa'
-import _treeKill from 'tree-kill'
 import * as playwright from 'playwright'
 import dotenv from 'dotenv'
 
@@ -19,8 +18,6 @@ export async function loadIndex (page: playwright.Page) {
     await page.goto('http://localhost:3000')
   }
 }
-
-const treeKill = promisify(_treeKill)
 
 // this'll take a while
 jest.setTimeout(10000000)
@@ -84,32 +81,23 @@ export function adminUITests (
       await cleanupKeystoneProcess()
     })
 
-    async function startKeystone (command: 'start' | 'dev') {
-      cleanupKeystoneProcess = (await generalStartKeystone(projectDir, command)).exit
-    }
+//      async function startKeystone (command: 'start' | 'dev') {
+//        cleanupKeystoneProcess = (await generalStartKeystone(projectDir, command)).exit
+//      }
 
     if (mode === 'dev') {
       test('start keystone in dev', async () => {
-        await startKeystone('dev')
+        await spawnCommand3(projectDir, ['dev'], 'Admin UI ready')
       })
-    }
 
-    if (mode === 'prod') {
+    } else if (mode === 'prod') {
       test('build keystone', async () => {
-        const ksProcess = execa('pnpm', ['build'], {
-          cwd: projectDir,
-          env: process.env,
-        })
-
-        if (process.env.VERBOSE) {
-          ksProcess.stdout!.pipe(process.stdout)
-          ksProcess.stderr!.pipe(process.stdout)
-        }
-
-        await ksProcess
+        const { exitPromise } = await spawnCommand3(projectDir, ['build'], 'Admin UI ready')
+        await exitPromise
       })
+
       test('start keystone in prod', async () => {
-        await startKeystone('start')
+        await spawnCommand3(projectDir, ['start'], 'Admin UI ready')
       })
     }
 
@@ -140,23 +128,39 @@ export async function waitForIO (ksProcess: ExecaChildProcess, content: string) 
   })
 }
 
-export async function generalStartKeystone (projectDir: string, command: 'start' | 'dev') {
-  if (!fs.existsSync(projectDir)) {
-    throw new Error(`No such file or directory ${projectDir}`)
-  }
+const cliBinPath = require.resolve('@keystone-6/core/bin/cli.js')
 
-  const keystoneProcess = execa('pnpm', ['keystone', command], {
-    cwd: projectDir,
-    env: process.env,
+export async function spawnCommand3 (cwd: string, commands: string[], waitOn: string) {
+  if (!fs.existsSync(cwd)) throw new Error(`No such file or directory ${cwd}`)
+
+  const p = spawn('node', [cliBinPath, ...commands], { cwd })
+
+  await new Promise<void>((resolve, reject) => {
+    let output = ''
+    function listener (data: Buffer) {
+      output += data.toString('utf8')
+      if (!output.includes(waitOn)) return
+
+      p.stdout!.off('data', listener)
+      p.stderr!.off('data', listener)
+      resolve()
+    }
+
+    p.stdout!.on('data', listener)
+    p.stderr!.on('data', listener)
+    p.on('error', err => reject(err))
   })
 
-  await waitForIO(keystoneProcess, 'Admin UI ready')
+  const exitPromise = new Promise<void>((resolve, reject) => {
+    p.on('exit', exitCode => {
+      if (typeof exitCode === 'number' && exitCode !== 0) return reject(new Error(`Error ${exitCode}`))
+      resolve()
+    })
+  })
+
   return {
-    process: keystoneProcess,
-    exit: async () => {
-      // childProcess.kill will only kill the direct child process
-      // so we use tree-kill to kill the process and it's children
-      await treeKill(keystoneProcess.pid!)
-    },
+    process: p,
+    exit: () => p.kill('SIGHUP'),
+    exitPromise,
   }
 }
