@@ -2,11 +2,11 @@ import { DocsLayout } from '../../../components/docs/DocsLayout'
 import PageClient from './page-client'
 
 export const metadata = {
-  title: 'Latest News',
-  description: 'What’s new with Keystone. A snapshot of announcements and recent releases.',
+  title: 'Timeline',
+  description: 'A snapshot of Keystone improvements and community happenings.',
 }
 
-export default function WhatsNew () {
+export default function Timeline () {
   return (
     <DocsLayout noRightNav noProse isIndexPage>
       <PageClient />

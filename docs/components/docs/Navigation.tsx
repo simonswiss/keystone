@@ -206,7 +206,7 @@ export function UpdatesNavigation () {
           fontWeight: 500,
         }}
       >
-        <PrimaryNavItem href="/updates">Latest News</PrimaryNavItem>
+        <PrimaryNavItem href="/updates">Timeline</PrimaryNavItem>
         <PrimaryNavItem href="/updates/roadmap">Roadmap</PrimaryNavItem>
       </nav>
     </NavContextProvider>

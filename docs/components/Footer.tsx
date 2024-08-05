@@ -142,7 +142,7 @@ export function Footer () {
             </Type>
             <List>
               <li>
-                <Link href="/updates">Latest News</Link>
+                <Link href="/updates">Timeline</Link>
               </li>
               <li>
                 <Link href="/updates/roadmap">Roadmap</Link>

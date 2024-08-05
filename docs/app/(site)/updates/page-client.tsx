@@ -127,30 +127,30 @@ export default function WhatsNew () {
   return (
     <>
       <Type as="h1" look="heading64">
-        Latest News
+        Timeline
       </Type>
 
       <Type as="p" look="body18" margin="1rem 0">
         A snapshot of Keystone improvements and community happenings.
         <br />
-        For developer changelogs see our{' '}
+        For developer changelogs, see our{' '}
         <a href="https://github.com/keystonejs/keystone/releases">GitHub Releases</a>.
       </Type>
 
-      <Alert look="tip" css={{ margin: '2rem 0' }}>
-        <span
-          css={{
-            display: 'inline-block',
-          }}
-        >
-          What are we working on next?{' '}
-          <span>
-            See our{' '}
-            <Button as="a" href="/roadmap" rel="noreferrer">
-              Roadmap <ArrowR />
-            </Button>
-          </span>
-        </span>
+      <Alert
+        look="tip"
+        css={{
+          margin: '2rem 0',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>What are we working on next? See our</span>
+        <Button as="a" href="/roadmap" rel="noreferrer">
+          Roadmap <ArrowR />
+        </Button>
       </Alert>
 
       <div
@@ -894,15 +894,17 @@ export default function WhatsNew () {
           you.
         </Box>
       </div>
-      <Alert look="tip" css={{ margin: '2rem 0' }}>
-        <span
-          css={{
-            display: 'inline-block',
-            margin: '0 1rem 0.5rem 0',
-          }}
-        >
-          Need answers to Keystone questions? Get help in our
-        </span>
+      <Alert
+        look="tip"
+        css={{
+          margin: '2rem 0',
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span>Need answers to Keystone questions? Get help in our</span>
         <Button as="a" href="https://community.keystonejs.com/" target="_blank" rel="noreferrer">
           Community Slack <ArrowR />
         </Button>
